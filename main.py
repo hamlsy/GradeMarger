@@ -99,8 +99,6 @@ class GradeMerger:
         last_drop_time = 0  # 마지막 공을 떨어뜨린 시간
         drop_delay = 1  # 공을 떨어뜨리는 최소 시간 간격 (초)
 
-
-
         while self.game_state.current_state == "GAME":
             to_remove = []  # 제거할 객체를 저장할 리스트
             for event in pygame.event.get():
@@ -117,7 +115,7 @@ class GradeMerger:
                     if event.key == pygame.K_SPACE:
                         current_time = pygame.time.get_ticks() / 1000  # 현재 시간 (초)
 
-                        #if not current_ball or current_ball.dropped:  # 현재 공이 없거나 떨어진 경우
+                        # if not current_ball or current_ball.dropped:  # 현재 공이 없거나 떨어진 경우
                         if (not current_ball or current_ball.dropped) and (current_time - last_drop_time >= drop_delay):
                             current_ball = next_ball
                             current_ball.drop()  # 공을 떨어뜨림
@@ -160,7 +158,7 @@ class GradeMerger:
                     shape.item_obj.draw(self.screen)
 
             # 다음 공 미리 그리기
-            next_ball.draw(self.screen)
+            # next_ball.draw(self.screen)
 
             pygame.display.flip()
             self.clock.tick(60)

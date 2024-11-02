@@ -12,12 +12,12 @@ BALL_ELASTICITY = 0.5
 
 # 성적 설정
 GRADES = {
-    'F': {'color': (255, 0, 0), 'size': 30, 'score': 10},
-    'D': {'color': (255, 165, 0), 'size': 40, 'score': 20},
-    'C': {'color': (255, 255, 0), 'size': 50, 'score': 40},
-    'B': {'color': (0, 255, 0), 'size': 60, 'score': 80},
-    'A': {'color': (0, 0, 255), 'size': 70, 'score': 160},
-    'A+': {'color': (128, 0, 128), 'size': 80, 'score': 320}
+    'F': {'color': (255, 0, 0), 'size': 60, 'score': 10},
+    'D': {'color': (255, 165, 0), 'size': 80, 'score': 20},
+    'C': {'color': (255, 255, 0), 'size': 100, 'score': 40},
+    'B': {'color': (0, 255, 0), 'size': 120, 'score': 80},
+    'A': {'color': (0, 0, 255), 'size': 140, 'score': 160},
+    'A+': {'color': (128, 0, 128), 'size': 160, 'score': 320}
 }
 
 # 아이템 설정
