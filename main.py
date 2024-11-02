@@ -89,42 +89,82 @@ class GradeMerger:
             self.clock.tick(60)
 
     def run_game(self):
-        # 게임 시작 시 초기화
-        score = 0
+        # 게임 상태 초기화
+        self.game_state.reset()
+        collision_handler = CollisionHandler(self.space, self.game_state)
+
         current_ball = None
-        next_ball = GradeBall.create_random_grade(self.space, self.mouse_pos)
+        next_ball = GradeBall.create_random_grade(self.space, (WINDOW_WIDTH // 2, 100))
+
+        last_drop_time = 0  # 마지막 공을 떨어뜨린 시간
+        drop_delay = 1  # 공을 떨어뜨리는 최소 시간 간격 (초)
+
+
 
         while self.game_state.current_state == "GAME":
+            to_remove = []  # 제거할 객체를 저장할 리스트
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
 
                 if event.type == pygame.MOUSEMOTION:
-                    self.mouse_pos = event.pos
+                    # 마우스 위치를 업데이트, 공이 떨어진 후에는 마우스 위치를 반영하지 않음
+                    if not current_ball or current_ball.dropped:
+                        self.mouse_pos = event.pos
 
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE and current_ball is None:
-                        current_ball = next_ball
-                        current_ball.drop()
-                        next_ball = GradeBall.create_random_grade(self.space, self.mouse_pos)
+                    if event.key == pygame.K_SPACE:
+                        current_time = pygame.time.get_ticks() / 1000  # 현재 시간 (초)
+
+                        #if not current_ball or current_ball.dropped:  # 현재 공이 없거나 떨어진 경우
+                        if (not current_ball or current_ball.dropped) and (current_time - last_drop_time >= drop_delay):
+                            current_ball = next_ball
+                            current_ball.drop()  # 공을 떨어뜨림
+                            last_drop_time = current_time  # 현재 시간을 마지막 드롭 시간으로 설정
+
+                            # 새로운 공을 생성할 때 마우스 X좌표 사용
+                            next_ball = GradeBall.create_random_grade(self.space, (self.mouse_pos[0], 100))
 
             # 물리 엔진 업데이트
             self.space.step(1 / 60.0)
 
-            # 충돌 검사 및 합치기 처리
-            self.check_collisions()
-
             # 게임 오버 체크
-            if self.check_game_over():
-                self.game_state.current_state = "GAME_OVER"
-                break
+            for shape in self.space.shapes:
+                if hasattr(shape, 'grade_obj'):
+                    if shape.body.position.y < 100 and shape.grade_obj.dropped:
+                        self.game_state.current_state = "GAME_OVER"
+                        break
+
+            # 제거할 객체 리스트 업데이트
+            for shape in self.space.shapes:
+                if hasattr(shape, 'grade_obj') and shape.body.position.y < 100:
+                    to_remove.append(shape)
+
+            # 제거할 객체 한꺼번에 제거
+            for shape in to_remove:
+                self.space.remove(shape, shape.body)
 
             # 화면 그리기
             self.screen.fill(BACKGROUND_COLOR)
-            self.draw_game(score, next_ball)
+            self.ui_manager.draw_game(self.game_state.score, self.game_state.round)
+
+            # Game over line
+            pygame.draw.line(self.screen, (255, 0, 0), (0, 100), (WINDOW_WIDTH, 100), 2)
+
+            # 모든 객체 그리기
+            for shape in self.space.shapes:
+                if hasattr(shape, 'grade_obj'):
+                    shape.grade_obj.draw(self.screen)
+                elif hasattr(shape, 'item_obj'):
+                    shape.item_obj.draw(self.screen)
+
+            # 다음 공 미리 그리기
+            next_ball.draw(self.screen)
+
             pygame.display.flip()
             self.clock.tick(60)
+
 
     def check_collisions(self):
         """충돌한 공들을 확인하고 같은 등급이면 합치기"""

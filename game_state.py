@@ -5,10 +5,11 @@ import grade as grade
 
 
 class GameState:
-    def __init__(self):
+    def __init__(self, screen=None):
         self.current_state = "MENU"  # MENU, GAME, SCORES, GAME_OVER
         self.score = 0
         self.round = 1
+        self.screen = screen
 
     def reset(self):
         self.score = 0
@@ -33,7 +34,7 @@ class UIManager:
     def draw_menu(self, high_score):
         # 타이틀 그리기
         title = self.font.render("성적합치기", True, (0, 0, 0))
-        title_rect = title.get_rect(center=(WINDOW_WIDTH // 2, 100))
+        title_rect = title.get_rect(center=(WINDOW_WIDTH // 2,  100))
         self.screen.blit(title, title_rect)
 
         # 최고 점수 표시

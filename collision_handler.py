@@ -53,11 +53,15 @@ class CollisionHandler:
                 self.game_state.score += GRADES[new_grade]['score']
                 
                 # 효과 생성
-                Effects.merge_effect(space.screen, new_pos, GRADES[new_grade]['size'])
+                #Effects.merge_effect(space.screen, new_pos, GRADES[new_grade]['size'])
+                #Effects.merge_effect(self.game_state.screen, new_pos, GRADES[new_grade]['size'])  # 수정된 부분
                 
                 # 이전 공들 제거
                 space.remove(ball_a.shape, ball_a.body)
                 space.remove(ball_b.shape, ball_b.body)
+
+                # 새 공을 스페이스에 추가
+                space.add(new_ball.body, new_ball.shape)
     
     def handle_item_collision(self, arbiter, space, data):
         # 아이템과 성적 공의 충돌 처리
