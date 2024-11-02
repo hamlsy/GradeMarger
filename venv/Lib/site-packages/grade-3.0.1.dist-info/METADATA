@@ -1,0 +1,61 @@
+Metadata-Version: 2.1
+Name: grade
+Version: 3.0.1
+Summary: a package focused on autograding
+Home-page: https://github.com/thoward27/grade
+License: AGPL-3.0
+Author: Tom
+Author-email: info@tomhoward.codes
+Requires-Python: >=3.6,<4.0
+Classifier: License :: OSI Approved :: GNU Affero General Public License v3
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Requires-Dist: click (>=7.0,<8.0)
+Project-URL: Documentation, https://grade.readthedocs.io/en/latest/
+Project-URL: Repository, https://github.com/thoward27/grade
+Description-Content-Type: text/markdown
+
+# Grade
+
+A python package focused on making autograding easy, especially for executable programs and scripts.
+
+[![Documentation Status](https://readthedocs.org/projects/grade/badge/?version=latest)](https://grade.readthedocs.io/en/latest/)
+[![Release](https://img.shields.io/github/v/release/thoward27/grade)](https://github.com/thoward27/grade/releases)
+[![AGPL License](https://img.shields.io/github/license/thoward27/grade)](https://github.com/thoward27/grade/blob/master/LICENSE)
+[![Code Quality](https://img.shields.io/lgtm/grade/python/github/thoward27/grade)](https://lgtm.com/projects/g/thoward27/grade/context:python)
+[![codecov](https://codecov.io/gh/thoward27/grade/branch/master/graph/badge.svg)](https://codecov.io/gh/thoward27/grade)
+[![BCH compliance](https://bettercodehub.com/edge/badge/thoward27/grade?branch=master)](https://bettercodehub.com/)
+[![DeepSource](https://static.deepsource.io/deepsource-badge-light-mini.svg)](https://deepsource.io/gh/thoward27/grade/?ref=repository-badge)
+
+---
+
+## Setup
+
+### Pip
+
+`python -m pip install grade`
+
+### Docker
+
+```docker
+FROM thoward27/grade:latest
+```
+
+### Sources
+
+```
+git clone https://github.com/thoward27/grade.git
+cd grade
+python -m pip install .
+```
+
+## Documentation
+
+Available on [ReadTheDocs](https://grade.readthedocs.io/en/latest/)
+
+## Example
+
+See `example.py` for an example on how to work with Grade.
+
