@@ -55,6 +55,11 @@ class GradeMerger:
         self.guide_line_color = (200, 200, 200)  # 가이드 라인 색상
         self.next_ball = None
 
+        self.game_over_countdown = None
+        self.game_over_start_time = None
+        self.show_exit_dialog = False
+        self.GAME_OVER_LINE = 150
+
 
     def create_boundaries(self):
         # 바닥과 양쪽 벽 생성
@@ -177,6 +182,10 @@ class GradeMerger:
                         delattr(shape.grade_obj, 'processing')
 
             for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.show_exit_dialog = True
+
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
@@ -209,21 +218,25 @@ class GradeMerger:
             self.space.step(1 / 60.0)
             self.check_collisions()
 
-            # 게임 오버 체크 v1
-            #for shape in self.space.shapes:
-            #    if hasattr(shape, 'grade_obj'):
-            #        if shape.body.position.y < 100 and shape.grade_obj.dropped:
-            #            self.game_state.current_state = "GAME_OVER"
-            #            break
+            # 게임 오버 체크 (v1)
+            # for shape in self.space.shapes:
+            #     if hasattr(shape, 'grade_obj'):
+            #         ball = shape.grade_obj
+            #         if ball.dropped and shape.body.position.y < 100 and \
+            #                 shape.body.velocity.y < 1.0:  # 거의 정지 상태일 때만 체크
+            #             self.game_state.current_state = "GAME_OVER"
+            #             return
 
-            # 게임 오버 체크 (개선된 버전)
-            for shape in self.space.shapes:
-                if hasattr(shape, 'grade_obj'):
-                    ball = shape.grade_obj
-                    if ball.dropped and shape.body.position.y < 100 and \
-                            shape.body.velocity.y < 1.0:  # 거의 정지 상태일 때만 체크
-                        self.game_state.current_state = "GAME_OVER"
-                        return
+            # 게임 오버 체크 (v2)
+            if not self.game_over_countdown:
+                for shape in self.space.shapes:
+                    if hasattr(shape, 'grade_obj'):
+                        ball = shape.grade_obj
+                        if ball.dropped and shape.body.position.y < self.GAME_OVER_LINE and \
+                                shape.body.velocity.y < 1.0:
+                            if self.game_over_countdown is None:
+                                self.game_over_countdown = 3
+                                self.game_over_start_time = pygame.time.get_ticks()
 
             # 제거할 객체 리스트 업데이트
             for shape in self.space.shapes:
@@ -233,6 +246,15 @@ class GradeMerger:
 
             # 화면 그리기
             self.screen.fill(BACKGROUND_COLOR)
+            # Next ball preview
+            if next_ball:
+                preview_pos = (WINDOW_WIDTH - 100, 50)
+                next_ball.draw_preview(self.screen, preview_pos)
+                preview_text = self.font.render("Next:", True, (0, 0, 0))
+                self.screen.blit(preview_text, (WINDOW_WIDTH - 150, 40))
+
+            # 카운트다운 표시
+            self.draw_countdown()
 
             # UI 그리기
             self.ui_manager.draw_game(self.game_state.score, self.game_state.round)
@@ -249,14 +271,19 @@ class GradeMerger:
                 2
             )
 
-            # 다음 공 미리보기 그리기
-            if self.next_ball:
-                preview_pos = (WINDOW_WIDTH - 100, 50)  # 우측 상단에 표시
-                self.next_ball.draw_preview(self.screen, preview_pos)
+            # 종료 대화상자 표시
+            if self.show_exit_dialog:
+                dialog_rect, exit_button, cancel_button = self.draw_exit_dialog()
 
-                # "Next" 텍스트 표시
-                next_text = self.font.render("Next:", True, (0, 0, 0))
-                self.screen.blit(next_text, (WINDOW_WIDTH - 150, 40))
+                # 마우스 클릭 처리
+                mouse_pos = pygame.mouse.get_pos()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if exit_button.collidepoint(mouse_pos):
+                        self.game_state.current_state = "MENU"
+                        return
+                    elif cancel_button.collidepoint(mouse_pos):
+                        self.show_exit_dialog = False
+
 
             # 모든 객체 그리기
             for shape in self.space.shapes:
@@ -324,6 +351,55 @@ class GradeMerger:
         # 모든 공들 그리기
         for ball in self.balls:
             ball.draw(self.screen)
+
+    def draw_exit_dialog(self):
+        """ESC 눌렀을 때 나타나는 종료 대화상자 그리기"""
+        dialog_surface = pygame.Surface((300, 150))
+        dialog_surface.fill((255, 255, 255))
+
+        # 대화상자 테두리
+        pygame.draw.rect(dialog_surface, (0, 0, 0), (0, 0, 300, 150), 2)
+
+        # 텍스트 렌더링
+        font = pygame.font.SysFont('malgun', 24)
+        text = font.render("게임을 나가시겠습니까?", True, (0, 0, 0))
+        text_rect = text.get_rect(center=(150, 40))
+        dialog_surface.blit(text, text_rect)
+
+        # 버튼 생성
+        exit_button = pygame.Rect(50, 80, 100, 40)
+        cancel_button = pygame.Rect(150, 80, 100, 40)
+
+        # 버튼 그리기
+        pygame.draw.rect(dialog_surface, (200, 0, 0), exit_button)
+        pygame.draw.rect(dialog_surface, (100, 100, 100), cancel_button)
+
+        # 버튼 텍스트
+        exit_text = font.render("Exit", True, (255, 255, 255))
+        cancel_text = font.render("Cancel", True, (255, 255, 255))
+
+        dialog_surface.blit(exit_text, exit_text.get_rect(center=exit_button.center))
+        dialog_surface.blit(cancel_text, cancel_text.get_rect(center=cancel_button.center))
+
+        # 화면 중앙에 대화상자 표시
+        dialog_rect = dialog_surface.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+        self.screen.blit(dialog_surface, dialog_rect)
+
+        return dialog_rect, exit_button.move(dialog_rect.x, dialog_rect.y), \
+               cancel_button.move(dialog_rect.x, dialog_rect.y)
+
+    def draw_countdown(self):
+        """게임오버 카운트다운 표시"""
+        if self.game_over_countdown is not None:
+            remaining_time = max(0, 3 - (pygame.time.get_ticks() - self.game_over_start_time) / 1000)
+            if remaining_time > 0:
+                font = pygame.font.SysFont('malgun', 72)
+                text = font.render(f"{int(remaining_time) + 1}", True, (255, 0, 0))
+                text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+                self.screen.blit(text, text_rect)
+            else:
+                self.game_state.current_state = "GAME_OVER"
+                self.game_over_countdown = None
 
 
 if __name__ == "__main__":
