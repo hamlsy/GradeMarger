@@ -57,6 +57,16 @@ class GradeBall:
         text_rect = text.get_rect(center=(int(pos.x), int(pos.y)))
         screen.blit(text, text_rect)
 
+    def draw_preview(self, screen, pos):
+        """미리보기 공 그리기"""
+        preview_size = 30  # 미리보기 크기 고정
+        pygame.draw.circle(screen, self.color, (int(pos[0]), int(pos[1])), preview_size)
+
+        # 성적 텍스트 그리기
+        font = pygame.font.SysFont('malgun', 20)
+        text = font.render(self.grade, True, (255, 255, 255))
+        text_rect = text.get_rect(center=(int(pos[0]), int(pos[1])))
+        screen.blit(text, text_rect)
 
 class Item:
     def __init__(self, space, pos, item_type):
@@ -101,4 +111,15 @@ class Item:
         font = pygame.font.SysFont(None, 20)
         text = font.render(self.item_type, True, (0, 0, 0))
         text_rect = text.get_rect(center=(int(pos.x), int(pos.y)))
+        screen.blit(text, text_rect)
+
+    def draw_preview(self, screen, pos):
+        """미리보기 아이템 그리기"""
+        preview_size = 30  # 미리보기 크기 고정
+        pygame.draw.circle(screen, self.color, (int(pos[0]), int(pos[1])), preview_size)
+
+        # 아이템 텍스트 그리기
+        font = pygame.font.SysFont('malgun', 15)
+        text = font.render(self.item_type, True, (0, 0, 0))
+        text_rect = text.get_rect(center=(int(pos[0]), int(pos[1])))
         screen.blit(text, text_rect)

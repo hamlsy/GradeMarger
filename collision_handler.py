@@ -14,7 +14,8 @@ class CollisionHandler:
     def __init__(self, space, game_state):
         self.space = space
         self.game_state = game_state
-
+        self.merge_queue = []
+        self.call_back_key = 0
         # 충돌 타입 설정
         # 1: 성적 공
         # 2: 아이템
@@ -32,12 +33,35 @@ class CollisionHandler:
         ball_a = arbiter.shapes[0].grade_obj
         ball_b = arbiter.shapes[1].grade_obj
 
-        # 같은 등급일 경우 합치기
+        # 이미 제거 예정이거나 처리 중인 공은 무시
+        if (hasattr(ball_a, 'to_remove') or hasattr(ball_b, 'to_remove') or
+                hasattr(ball_a, 'processing') or hasattr(ball_b, 'processing')):
+            return
+
+        # 같은 등급일 경우 합치기 큐에 추가
         if ball_a.grade == ball_b.grade:
+            self.merge_queue.append((ball_a, ball_b))
+            # 처리 중 표시
+            ball_a.processing = True
+            ball_b.processing = True
+
+
+    def process_merges(self):
+        """합치기 큐에 있는 모든 공을 처리"""
+        if not self.merge_queue:
+            return
+
+        # 현재 프레임의 모든 병합 작업 처리
+        while self.merge_queue:
+            ball_a, ball_b = self.merge_queue.pop(0)
+
+            # 이미 제거된 공은 건너뛰기 v1
+            if hasattr(ball_a, 'to_remove') or hasattr(ball_b, 'to_remove'):
+                continue
+
+            # 새로운 위치 계산
             pos_a = ball_a.body.position
             pos_b = ball_b.body.position
-
-            # 새로운 위치 계산 (두 공의 중간)
             new_pos = ((pos_a.x + pos_b.x) / 2, (pos_a.y + pos_b.y) / 2)
 
             # 다음 등급 결정
@@ -45,23 +69,42 @@ class CollisionHandler:
             current_index = grade_order.index(ball_a.grade)
 
             if current_index < len(grade_order) - 1:
-                # 새로운 등급의 공 생성
+                # 새 공 생성
                 new_grade = grade_order[current_index + 1]
-                new_ball = GradeBall(space, new_pos, new_grade)
+                new_ball = GradeBall(self.space, new_pos, new_grade)
 
                 # 점수 추가
                 self.game_state.score += GRADES[new_grade]['score']
 
-                # 효과 생성
-                # Effects.merge_effect(space.screen, new_pos, GRADES[new_grade]['size'])
-                # Effects.merge_effect(self.game_state.screen, new_pos, GRADES[new_grade]['size'])  # 수정된 부분
+                # 이전 공들 제거 표시
+                ball_a.to_remove = True
+                ball_b.to_remove = True
 
-                # 이전 공들 제거
-                space.remove(ball_a.shape, ball_a.body)
-                space.remove(ball_b.shape, ball_b.body)
+                # 새 공 추가 및 주변 공들과의 즉시 충돌 체크
+                def add_new_ball():
+                    # 이전 공들 제거
+                    if ball_a in self.space.shapes:
+                        self.space.remove(ball_a.shape, ball_a.body)
+                    if ball_b in self.space.shapes:
+                        self.space.remove(ball_b.shape, ball_b.body)
 
-                # 새 공을 스페이스에 추가
-                space.add(new_ball.body, new_ball.shape)
+                    # 새 공 추가
+                    self.space.add(new_ball.body, new_ball.shape)
+
+                    # 주변 공들과의 충돌 즉시 체크
+                    for shape in self.space.shapes:
+                        if (hasattr(shape, 'grade_obj') and
+                            shape.grade_obj != new_ball and
+                            shape.grade_obj.grade == new_ball.grade):
+                            # 거리 체크
+                            dist = ((shape.body.position.x - new_ball.body.position.x) ** 2 +
+                                    (shape.body.position.y - new_ball.body.position.y) ** 2) ** 0.5
+                            if dist < (shape.radius + new_ball.shape.radius) * 1.5:  # 약간의 여유를 둠
+                                self.merge_queue.append((shape.grade_obj, new_ball))
+
+                    # 고유한 키를 사용하여 콜백 등록
+                    self.callback_key += 1
+                    self.space.add_post_step_callback(add_new_ball, self.callback_key)
 
     def handle_item_collision(self, arbiter, space, data):
         # 아이템과 성적 공의 충돌 처리
@@ -100,67 +143,3 @@ class CollisionHandler:
         # 아이템 제거
         space.remove(item.shape, item.body)
 
-    # 메인 게임 루프 수정 (main.py의 run_game 메소드)
-    def run_game(self):
-        # 게임 상태 초기화
-        self.game_state.reset()
-        collision_handler = CollisionHandler(self.space, self.game_state)
-
-        current_ball = None
-        next_ball = GradeBall.create_random_grade(self.space, self.mouse_pos)
-
-        # 게임 루프
-        while self.game_state.current_state == "GAME":
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-
-                if event.type == pygame.MOUSEMOTION:
-                    self.mouse_pos = event.pos
-                    if not current_ball or not current_ball.dropped:
-                        next_ball.body.position = (event.pos[0], 100)
-
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE and (not current_ball or current_ball.dropped):
-                        current_ball = next_ball
-                        current_ball.drop()
-
-                        # 새로운 공 생성
-                        next_ball = GradeBall.create_random_grade(
-                            self.space,
-                            (self.mouse_pos[0], 100),
-                            self.game_state.round
-                        )
-
-                        # 랜덤으로 아이템 생성
-                        if random.random() < 0.1:  # 10% 확률로 아이템 생성
-                            Item.create_random_item(self.space, (random.randint(50, WINDOW_WIDTH - 50), -20))
-
-            # 물리 엔진 업데이트
-            self.space.step(1 / 60.0)
-
-            # 화면 그리기
-            self.screen.fill(BACKGROUND_COLOR)
-            self.ui_manager.draw_game(self.game_state.score, self.game_state.round)
-
-            # 모든 객체 그리기
-            for shape in self.space.shapes:
-                if hasattr(shape, 'grade_obj'):
-                    shape.grade_obj.draw(self.screen)
-                elif hasattr(shape, 'item_obj'):
-                    shape.item_obj.draw(self.screen)
-
-            pygame.display.flip()
-            self.clock.tick(60)
-
-            # 게임 오버 체크
-            game_over = False
-            for shape in self.space.shapes:
-                if hasattr(shape, 'grade_obj'):
-                    if shape.body.position.y < 100 and shape.grade_obj.dropped:
-                        game_over = True
-                        break
-
-            if game_over:
-                self.game_state.current_state = "GAME_OVER"

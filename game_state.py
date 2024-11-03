@@ -27,18 +27,49 @@ class UIManager:
         self.screen = screen
         self.font = pygame.font.SysFont(None, FONT_SIZE)
         self.buttons = {}
+        self.show_tutorial = False
+
+    def create_tutorial_window(self):
+        tutorial_surface = pygame.Surface((600, 400))
+        tutorial_surface.fill((255, 255, 255))
+
+        tutorial_text = [
+            "How to Play",
+            "",
+            "1. Drop balls and merge same grades",
+            "",
+            "2. Use items to increase or decrease grades",
+            "",
+            "3. Game over if balls cross the red line!"
+        ]
+
+        y = 20
+        for line in tutorial_text:
+            text = self.font.render(line, True, (0, 0, 0))
+            tutorial_surface.blit(text, (20, y))
+            y += 40
+
+        return tutorial_surface
 
     def create_button(self, text, pos, size):
         return pygame.Rect(pos[0], pos[1], size[0], size[1])
 
     def draw_menu(self, high_score):
+
+
+        # 게임 방법 창 표시
+        if self.show_tutorial:
+            tutorial_surface = self.create_tutorial_window()
+            tutorial_rect = tutorial_surface.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+            self.screen.blit(tutorial_surface, tutorial_rect)
+
         # 타이틀 그리기
-        title = self.font.render("성적합치기", True, (0, 0, 0))
+        title = self.font.render("Grade Merger!", True, (0, 0, 0))
         title_rect = title.get_rect(center=(WINDOW_WIDTH // 2, 100))
         self.screen.blit(title, title_rect)
 
         # 최고 점수 표시
-        score_text = self.font.render(f"최고점수: {high_score}", True, (0, 0, 0))
+        score_text = self.font.render(f"Maximum score: {high_score}", True, (0, 0, 0))
         score_rect = score_text.get_rect(center=(WINDOW_WIDTH // 2, 150))
         self.screen.blit(score_text, score_rect)
 
@@ -47,16 +78,24 @@ class UIManager:
         start_button = self.create_button("게임 시작",
                                           (WINDOW_WIDTH // 2 - button_width // 2, 250),
                                           (button_width, button_height))
-        scores_button = self.create_button("점수 기록",
-                                           (WINDOW_WIDTH // 2 - button_width // 2, 320),
-                                           (button_width, button_height))
+
+        # 기존 메뉴 버튼에 게임 방법 버튼 추가
+        tutorial_button = self.create_button("게임 방법",
+                                             (WINDOW_WIDTH // 2 - button_width // 2, 350),
+                                             (button_width, button_height))
+        self.buttons["tutorial"] = tutorial_button
+
+        #scores_button = self.create_button("점수 기록",
+        #                                   (WINDOW_WIDTH // 2 - button_width // 2, 450),
+        #                                   (button_width, button_height))
         exit_button = self.create_button("게임 나가기",
-                                         (WINDOW_WIDTH // 2 - button_width // 2, 390),
+                                         (WINDOW_WIDTH // 2 - button_width // 2, 450),
                                          (button_width, button_height))
 
         self.buttons = {
             "start": start_button,
-            "scores": scores_button,
+            "how to play": tutorial_button,
+            #"scores": scores_button,
             "exit": exit_button
         }
 
@@ -87,18 +126,18 @@ class UIManager:
         self.screen.blit(game_over_text, game_over_rect)
         self.screen.blit(score_text, score_rect)
 
-        # 버튼 생성 및 그리기
+        # Try Again과 Exit 버튼 추가
         button_width, button_height = 200, 50
-        retry_button = self.create_button("다시 시도",
-                                          (WINDOW_WIDTH // 2 - button_width // 2, WINDOW_HEIGHT // 2 + 50),
+        retry_button = self.create_button("Try Again",
+                                          (WINDOW_WIDTH // 2 - button_width - 10, WINDOW_HEIGHT // 2 + 50),
                                           (button_width, button_height))
-        menu_button = self.create_button("메인 메뉴",
-                                         (WINDOW_WIDTH // 2 - button_width // 2, WINDOW_HEIGHT // 2 + 120),
+        exit_button = self.create_button("Exit",
+                                         (WINDOW_WIDTH // 2 + 10, WINDOW_HEIGHT // 2 + 50),
                                          (button_width, button_height))
 
         self.buttons = {
             "retry": retry_button,
-            "menu": menu_button
+            "exit": exit_button
         }
 
         for text, button in self.buttons.items():
@@ -141,6 +180,10 @@ class UIManager:
                 game_state.reset()
             elif self.buttons.get("scores") and self.buttons["scores"].collidepoint(mouse_pos):
                 game_state.current_state = "SCORES"
+
+            elif self.buttons.get("how to play") and self.buttons["how to play"].collidepoint(mouse_pos):
+                game_state.current_state = "TUTORIAL"
+
             elif self.buttons.get("exit") and self.buttons["exit"].collidepoint(mouse_pos):
                 pygame.quit()
                 sys.exit()
