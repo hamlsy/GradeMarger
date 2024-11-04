@@ -10,7 +10,7 @@ from game_objects import GradeBall, Item
 from game_state import UIManager
 from game_state import ScoreManager
 from collision_handler import CollisionHandler
-from game_state import Effects
+#from game_state import Effects
 from config import *
 
 
@@ -59,6 +59,7 @@ class GradeMerger:
         self.game_over_start_time = None
         self.show_exit_dialog = False
         self.GAME_OVER_LINE = 150
+
 
 
     def create_boundaries(self):
@@ -159,11 +160,16 @@ class GradeMerger:
         next_ball = GradeBall.create_random_grade(self.space, (WINDOW_WIDTH // 2, 100))
 
         self.mouse_pos = (WINDOW_WIDTH // 2, 0)
-
         last_drop_time = 0  # 마지막 공을 떨어뜨린 시간
         drop_delay = 1  # 공을 떨어뜨리는 최소 시간 간격 (초)
 
+        # 게임 오버 관련 변수 초기화
+        game_over_timer = None
+        balls_above_line = set()  # 빨간 선 위에 있는 공들을 추적
+
         while self.game_state.current_state == "GAME":
+            current_event = None
+
             collision_handler.process_merges()
             self.check_collisions()
             to_remove = []  # 제거할 객체를 저장할 리스트
@@ -175,6 +181,33 @@ class GradeMerger:
                 if shape in self.space.shapes:
                     self.space.remove(shape, shape.body)
 
+            # 게임 오버 체크 로직
+            for shape in self.space.shapes:
+                if hasattr(shape, 'grade_obj'):
+                    ball = shape.grade_obj
+                    if ball.dropped and shape.body.position.y < self.GAME_OVER_LINE:
+                        print("떨어진 상태면서 y가 GameOver보다 아래")
+                        print("ball droped", ball.dropped)
+                        print(shape.body.position.y)
+                        ball_id = id(ball)
+                        if ball_id not in balls_above_line:
+                            balls_above_line.add(ball_id)
+                            if game_over_timer is None:
+                                game_over_timer = pygame.time.get_ticks()
+                    else:
+                        print("A")
+                        print("ball droped", ball.dropped)
+                        print(shape.body.position.y)
+                        if id(ball) in balls_above_line:
+                            balls_above_line.remove(id(ball))
+                            if len(balls_above_line) == 0:
+                                game_over_timer = None
+                # 3초 타이머 체크
+                if game_over_timer is not None:
+                    if pygame.time.get_ticks() - game_over_timer >= 3000:  # 3초
+                        self.game_state.current_state = "GAME_OVER"
+                        return
+
                 # processing 플래그 초기화
             for shape in self.space.shapes:
                 if hasattr(shape, 'grade_obj'):
@@ -182,6 +215,7 @@ class GradeMerger:
                         delattr(shape.grade_obj, 'processing')
 
             for event in pygame.event.get():
+                current_event = event  # 현재 이벤트 저장
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         self.show_exit_dialog = True
@@ -197,9 +231,6 @@ class GradeMerger:
                     if self.current_ball and not self.current_ball.dropped:
                         self.current_ball.body.position = self.mouse_pos
 
-                    #v1
-                    #if not current_ball or current_ball.dropped:
-                    #    self.mouse_pos = event.pos
 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
@@ -217,31 +248,6 @@ class GradeMerger:
             # 물리 엔진 업데이트
             self.space.step(1 / 60.0)
             self.check_collisions()
-
-            # 게임 오버 체크 (v1)
-            # for shape in self.space.shapes:
-            #     if hasattr(shape, 'grade_obj'):
-            #         ball = shape.grade_obj
-            #         if ball.dropped and shape.body.position.y < 100 and \
-            #                 shape.body.velocity.y < 1.0:  # 거의 정지 상태일 때만 체크
-            #             self.game_state.current_state = "GAME_OVER"
-            #             return
-
-            # 게임 오버 체크 (v2)
-            if not self.game_over_countdown:
-                for shape in self.space.shapes:
-                    if hasattr(shape, 'grade_obj'):
-                        ball = shape.grade_obj
-                        if ball.dropped and shape.body.position.y < self.GAME_OVER_LINE and \
-                                shape.body.velocity.y < 1.0:
-                            if self.game_over_countdown is None:
-                                self.game_over_countdown = 3
-                                self.game_over_start_time = pygame.time.get_ticks()
-
-            # 제거할 객체 리스트 업데이트
-            for shape in self.space.shapes:
-                if hasattr(shape, 'grade_obj') and shape.body.position.y < 100:
-                    to_remove.append(shape)
 
 
             # 화면 그리기
@@ -271,15 +277,19 @@ class GradeMerger:
                 2
             )
 
-            # 종료 대화상자 표시
+            # 종료 대화상자 표시 -> esc로직
             if self.show_exit_dialog:
                 dialog_rect, exit_button, cancel_button = self.draw_exit_dialog()
 
                 # 마우스 클릭 처리
                 mouse_pos = pygame.mouse.get_pos()
-                if event.type == pygame.MOUSEBUTTONDOWN:
+                # 현재 이벤트가 있고 마우스 클릭인 경우에만 처리
+                if current_event and current_event.type == pygame.MOUSEBUTTONDOWN:
+                    mouse_pos = pygame.mouse.get_pos()
                     if exit_button.collidepoint(mouse_pos):
+                        self.game_state.reset()  # 게임 상태 초기화
                         self.game_state.current_state = "MENU"
+                        self.show_exit_dialog = False  # ESC 창 닫기
                         return
                     elif cancel_button.collidepoint(mouse_pos):
                         self.show_exit_dialog = False
@@ -291,9 +301,6 @@ class GradeMerger:
                     shape.grade_obj.draw(self.screen)
                 elif hasattr(shape, 'item_obj'):
                     shape.item_obj.draw(self.screen)
-
-            # 다음 공 미리 그리기
-            # next_ball.draw(self.screen)
 
             pygame.display.flip()
             self.clock.tick(60)
@@ -323,14 +330,6 @@ class GradeMerger:
                 self.balls.remove(ball)
                 self.space.remove(ball.body, ball.shape)
 
-    def check_game_over(self):
-        """게임 오버 조건 체크"""
-        game_over_line = 100
-        for shape in self.space.shapes:
-            if hasattr(shape, 'grade_obj'):
-                if shape.body.position.y <= game_over_line and shape.grade_obj.dropped:
-                    return True
-        return False
 
     def draw_game(self, score, next_ball):
         """게임 화면 그리기"""
@@ -400,6 +399,14 @@ class GradeMerger:
             else:
                 self.game_state.current_state = "GAME_OVER"
                 self.game_over_countdown = None
+
+    def create_next_object(self, space, pos):
+        """다음 오브젝트 생성 (공 또는 아이템)"""
+        if random.random() < 0.5:  # 20% 확률로 아이템 생성
+            item_types = ["과제", "휴강"]
+            return Item(space, pos, random.choice(item_types))
+        else:
+            return GradeBall.create_random_grade(space, pos)
 
 
 if __name__ == "__main__":

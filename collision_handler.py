@@ -7,7 +7,7 @@ import pymunk
 
 from config import *
 from game_objects import GradeBall, Item
-from game_state import Effects
+#from game_state import Effects
 
 
 class CollisionHandler:

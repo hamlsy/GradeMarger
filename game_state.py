@@ -1,8 +1,6 @@
 # game_state.py
 import sys
-
 import grade as grade
-
 
 class GameState:
     def __init__(self, screen=None):
@@ -29,25 +27,54 @@ class UIManager:
         self.buttons = {}
         self.show_tutorial = False
 
+        # 배경 이미지 로드 (배경 이미지가 있다고 가정)
+        self.background = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.background.fill((240, 248, 255))  # 연한 하늘색 배경
+        # 패턴 추가
+        for i in range(0, WINDOW_WIDTH, 30):
+            for j in range(0, WINDOW_HEIGHT, 30):
+                if (i + j) % 60 == 0:
+                    pygame.draw.circle(self.background, (230, 240, 250), (i, j), 5)
+
     def create_tutorial_window(self):
         tutorial_surface = pygame.Surface((600, 400))
+        # 그라데이션 배경
+        for i in range(400):
+            color = (255 - i // 4, 255 - i // 4, 255)
+            pygame.draw.line(tutorial_surface, color, (0, i), (600, i))
+
+        # 테두리 추가
         tutorial_surface.fill((255, 255, 255))
 
         tutorial_text = [
-            "How to Play",
+            ("How to Play", 36, (0, 0, 0)),
             "",
-            "1. Drop balls and merge same grades",
+            ("1. Drop balls by clicking SPACE", 24, (50, 50, 50)),
+            ("   - Merge same grades to get higher grades", 20, (70, 70, 70)),
             "",
-            "2. Use items to increase or decrease grades",
+            ("2. Items can appear randomly:", 24, (50, 50, 50)),
+            ("   - Assignment: Decreases grade", 20, (70, 70, 70)),
+            ("   - Class Canceled: Increases grade", 20, (70, 70, 70)),
             "",
-            "3. Game over if balls cross the red line!"
+            ("3. Game Over Conditions:", 24, (50, 50, 50)),
+            ("   - Balls stay above red line for 3 seconds", 20, (70, 70, 70)),
+            "",
+            ("Tips:", 24, (50, 50, 50)),
+            ("- Plan your drops carefully", 20, (70, 70, 70)),
+            ("- Watch out for the red line!", 20, (70, 70, 70))
         ]
 
         y = 20
         for line in tutorial_text:
-            text = self.font.render(line, True, (0, 0, 0))
-            tutorial_surface.blit(text, (20, y))
-            y += 40
+            if isinstance(line, tuple):
+                text, size, color = line
+                font = pygame.font.SysFont(None, size)
+                text_surface = font.render(text, True, color)
+                text_rect = text_surface.get_rect(x=20, y=y)
+                tutorial_surface.blit(text_surface, text_rect)
+                y += size + 5
+            else:
+                y += 20
 
         return tutorial_surface
 
@@ -55,7 +82,8 @@ class UIManager:
         return pygame.Rect(pos[0], pos[1], size[0], size[1])
 
     def draw_menu(self, high_score):
-
+        # 배경 그리기
+        self.screen.blit(self.background, (0, 0))
 
         # 게임 방법 창 표시
         if self.show_tutorial:
@@ -65,13 +93,38 @@ class UIManager:
 
         # 타이틀 그리기
         title = self.font.render("Grade Merger!", True, (0, 0, 0))
-        title_rect = title.get_rect(center=(WINDOW_WIDTH // 2, 100))
-        self.screen.blit(title, title_rect)
+        # 타이틀 효과
+        title = "Grade Merger!"
+        font_size = 72
+        font = pygame.font.SysFont(None, font_size)
 
-        # 최고 점수 표시
-        score_text = self.font.render(f"Maximum score: {high_score}", True, (0, 0, 0))
-        score_rect = score_text.get_rect(center=(WINDOW_WIDTH // 2, 150))
-        self.screen.blit(score_text, score_rect)
+        # 그림자 효과
+        shadow = font.render(title, True, (100, 100, 100))
+        shadow_rect = shadow.get_rect(center=(WINDOW_WIDTH // 2 + 3, 103))
+        self.screen.blit(shadow, shadow_rect)
+
+        # 메인 텍스트
+        text = font.render(title, True, (0, 0, 150))
+        text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, 100))
+        self.screen.blit(text, text_rect)
+
+        # 최고 점수 표시 (장식된 프레임 안에)
+        score_frame = pygame.Surface((300, 60))
+        score_frame.fill((240, 240, 255))
+        pygame.draw.rect(score_frame, (100, 100, 200), (0, 0, 300, 60), 3)
+        score_text = self.font.render(f"High Score: {high_score}", True, (0, 0, 100))
+        score_rect = score_text.get_rect(center=(150, 30))
+        score_frame.blit(score_text, score_rect)
+        self.screen.blit(score_frame, (WINDOW_WIDTH // 2 - 150, 150))
+
+        # 버튼 디자인 개선
+        button_colors = {
+            "start": ((50, 150, 50), (70, 170, 70)),
+            "how to play": ((50, 50, 150), (70, 70, 170)),
+            "exit": ((150, 50, 50), (170, 70, 70))
+        }
+        button_width, button_height = 200, 50
+        y_positions = {"start": 250, "how to play": 350, "exit": 450}
 
         # 버튼 생성 및 그리기
         button_width, button_height = 200, 50
@@ -99,9 +152,21 @@ class UIManager:
             "exit": exit_button
         }
 
-        for text, button in self.buttons.items():
-            pygame.draw.rect(self.screen, BUTTON_COLOR, button)
-            button_text = self.font.render(text, True, BUTTON_TEXT_COLOR)
+        for text, y_pos in y_positions.items():
+            button = self.create_button(text,
+                                        (WINDOW_WIDTH // 2 - button_width // 2, y_pos),
+                                        (button_width, button_height))
+            self.buttons[text] = button
+
+            # 버튼 그리기 (그라데이션 효과)
+            base_color, hover_color = button_colors[text]
+            mouse_pos = pygame.mouse.get_pos()
+            color = hover_color if button.collidepoint(mouse_pos) else base_color
+
+            pygame.draw.rect(self.screen, color, button)
+            pygame.draw.rect(self.screen, (255, 255, 255), button, 2)
+
+            button_text = self.font.render(text.title(), True, (255, 255, 255))
             text_rect = button_text.get_rect(center=button.center)
             self.screen.blit(button_text, text_rect)
 
@@ -225,42 +290,3 @@ class ScoreManager:
 
     def get_scores(self):
         return self.scores
-
-
-# effects.py
-import pygame
-import random
-from config import *
-
-
-class Effects:
-    @staticmethod
-    def merge_effect(screen, pos, size):
-        # 합치기 효과 - 파티클 생성
-        particles = []
-        for _ in range(10):
-            angle = random.uniform(0, 360)
-            speed = random.uniform(2, 5)
-            particle = {
-                'pos': list(pos),
-                'vel': [speed * pygame.math.Vector2().from_polar((1, angle))[0],
-                        speed * pygame.math.Vector2().from_polar((1, angle))[1]],
-                'lifetime': 20
-            }
-            particles.append(particle)
-
-        # 파티클 애니메이션
-        for _ in range(20):
-            for particle in particles:
-                particle['pos'][0] += particle['vel'][0]
-                particle['pos'][1] += particle['vel'][1]
-                particle['lifetime'] -= 1
-
-                if particle['lifetime'] > 0:
-                    alpha = int(255 * (particle['lifetime'] / 20))
-                    particle_surface = pygame.Surface((4, 4), pygame.SRCALPHA)
-                    pygame.draw.circle(particle_surface, (*GRADES[grade]['color'], alpha), (2, 2), 2)
-                    screen.blit(particle_surface, particle['pos'])
-
-            pygame.display.flip()
-            pygame.time.wait(20)
