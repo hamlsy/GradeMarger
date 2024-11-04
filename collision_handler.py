@@ -72,7 +72,7 @@ class CollisionHandler:
                 # 새 공 생성
                 new_grade = grade_order[current_index + 1]
                 new_ball = GradeBall(self.space, new_pos, new_grade)
-
+                new_ball.dropped = True
                 # 점수 추가
                 self.game_state.score += GRADES[new_grade]['score']
 

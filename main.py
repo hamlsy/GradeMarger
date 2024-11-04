@@ -185,9 +185,10 @@ class GradeMerger:
             for shape in self.space.shapes:
                 if hasattr(shape, 'grade_obj'):
                     ball = shape.grade_obj
-                    if ball.dropped and shape.body.position.y < self.GAME_OVER_LINE:
-                        print("떨어진 상태면서 y가 GameOver보다 아래")
-                        print("ball droped", ball.dropped)
+                    ball_top_y = shape.body.position.y - ball.size  # 공의 위쪽 끝 좌표
+                    print(ball_top_y, self.GAME_OVER_LINE)
+                    #if ball.dropped and shape.body.position.y < self.GAME_OVER_LINE:
+                    if ball.dropped and ball_top_y <= self.GAME_OVER_LINE:
                         print(shape.body.position.y)
                         ball_id = id(ball)
                         if ball_id not in balls_above_line:
@@ -195,9 +196,6 @@ class GradeMerger:
                             if game_over_timer is None:
                                 game_over_timer = pygame.time.get_ticks()
                     else:
-                        print("A")
-                        print("ball droped", ball.dropped)
-                        print(shape.body.position.y)
                         if id(ball) in balls_above_line:
                             balls_above_line.remove(id(ball))
                             if len(balls_above_line) == 0:
@@ -240,6 +238,7 @@ class GradeMerger:
                         if (not current_ball or current_ball.dropped) and (current_time - last_drop_time >= drop_delay):
                             current_ball = next_ball
                             current_ball.drop()  # 공을 떨어뜨림
+
                             last_drop_time = current_time  # 현재 시간을 마지막 드롭 시간으로 설정
 
                             # 새로운 공을 생성할 때 마우스 X좌표 사용
